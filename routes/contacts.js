@@ -54,15 +54,58 @@ router.post(
 // @route  PUT    api/contacts/:id
 // @desc   Update a contact
 // @access Private
-router.put("/:id", (req, res) => {
-  res.send("update the contact");
+router.put("/:id", auth, async (req, res) => {
+  const { name, email, phone, relationShip } = req.body;
+  const contactFields = {};
+  if (name) contactFields.name = name;
+  if (email) contactFields.email = email;
+  if (phone) contactFields.phone = phone;
+  if (relationShip) contactFields.relationShip = relationShip;
+  try {
+    let contact = await Contact.findById(req.params.id);
+    if (!contact)
+      return res.status(404).json({ msg: "This contact does not exist." });
+    if (contact.user.toString() !== req.user.id) {
+      return res.status(401).json({
+        msg: "you do not have the correct authorization to update this contact",
+      });
+    }
+    //Update the contact
+    contact = await Contact.findByIdAndUpdate(
+      req.params.id,
+      {
+        $set: contactFields,
+      },
+      { new: true }
+    );
+    res.json(contact);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send("Server Error");
+  }
 });
 
 // @route  DELETE    api/contacts/:id
 // @desc   Delete a contact
 // @access Private
-router.delete("/:id", (req, res) => {
-  res.send("delete the contact");
+router.delete("/:id", auth, async (req, res) => {
+  try {
+    let contact = await Contact.findById(req.params.id);
+    if (!contact)
+      return res.status(404).json({ msg: "This contact does not exist." });
+    if (contact.user.toString() !== req.user.id) {
+      return res.status(401).json({
+        msg: "you do not have the correct authorization to update this contact",
+      });
+    }
+    //find and remove the contact from MongoDB
+    await Contact.findByIdAndRemove(req.params.id);
+
+    res.json({ msg: "This contact has been removed" });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send("Server Error");
+  }
 });
 
 module.exports = router;
